@@ -3,31 +3,37 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime
 
-# Limpa o layout para remover os blocos brancos vazios
+# Configura a página para evitar blocos vazios e manter o foco no formulário
 st.set_page_config(page_title="SGE - Registro", layout="centered")
 
-# Estilização para ficar idêntico à sua imagem de referência
+# CSS para limpar o visual e seguir a imagem original
 st.markdown("""
     <style>
     .stApp { background-color: #f8f9fa; }
     .main-form {
-        background-color: white; padding: 30px; border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
+        background-color: white; 
+        padding: 30px; 
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+        border: 1px solid #e0e0e0;
     }
     .stTextInput input, .stSelectbox div[data-baseweb="select"], .stTextArea textarea {
-        background-color: #f1f3f5 !important; border: none !important; border-radius: 8px !important;
+        background-color: #f1f3f5 !important; 
+        border: none !important; 
+        border-radius: 8px !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# URL da sua planilha (Use o link da barra de endereços do navegador)
-URL_PLANILHA = "COLE_AQUI_O_LINK_DA_SUA_PLANILHA"
+# Seu link direto da planilha
+URL_PLANILHA = "https://docs.google.com/spreadsheets/d/12XFFeXFt3Lx8dLUeZFw3LbJKnZ29pEuFkgTT9lLuLBA/edit#gid=0"
 
-# Conexão
+# Inicializa a conexão
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 st.write("Utilize o formulário abaixo para registrar incidentes ou observações.")
 
+# Início do formulário único
 with st.container():
     st.markdown('<div class="main-form">', unsafe_allow_html=True)
     
@@ -47,7 +53,10 @@ with st.container():
     if st.button("Salvar Registro", type="primary"):
         if aluno and descricao:
             try:
-                # Tenta gravar diretamente
+                # Tenta ler os dados da aba "Registros" (ttl=0 garante leitura em tempo real)
+                df_existente = conn.read(spreadsheet=URL_PLANILHA, worksheet="Registros", ttl=0)
+                
+                # Prepara a nova linha
                 novo_registro = pd.DataFrame([{
                     "Data": datetime.now().strftime("%d/%m/%Y %H:%M"),
                     "Aluno": aluno,
@@ -56,18 +65,15 @@ with st.container():
                     "Descricao": descricao
                 }])
                 
-                # Lê os dados atuais (ttl=0 evita que o app use dados antigos do "cache")
-                existente = conn.read(spreadsheet=URL_PLANILHA, worksheet="Registros", ttl=0)
-                df_final = pd.concat([existente, novo_registro], ignore_index=True)
-                
-                # Grava na planilha
+                # Une e salva
+                df_final = pd.concat([df_existente, novo_registro], ignore_index=True)
                 conn.update(spreadsheet=URL_PLANILHA, worksheet="Registros", data=df_final)
                 
-                st.success("✅ Sucesso! Ocorrência registrada.")
+                st.success("✅ Registro realizado com sucesso!")
                 st.balloons()
             except Exception as e:
-                st.error(f"Erro técnico: {e}")
-                st.info("Verifique se a planilha está aberta para 'Qualquer pessoa com link' como EDITOR.")
+                st.error("ERRO: Certifique-se de que o nome da aba na planilha é exatamente 'Registros'.")
         else:
             st.warning("⚠️ Preencha o nome do aluno e a descrição.")
+    
     st.markdown('</div>', unsafe_allow_html=True)
