@@ -3,9 +3,10 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime
 
+# 1. Configuração da Página
 st.set_page_config(page_title="SGE - Registro", layout="centered")
 
-# Visual limpo
+# 2. Estilo Visual (CSS)
 st.markdown("""
     <style>
     .stApp { background-color: #f8f9fa; }
@@ -16,7 +17,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# COLE O LINK QUE VOCÊ COPIOU NO BOTÃO COMPARTILHAR AQUI:
+# 3. Seu link da planilha (Já inserido abaixo)
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/12XFFeXFt3Lx8dLUeZFw3LbJKnZ29pEuFkgTT9lLuLBA/edit?usp=sharing"
 
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -37,7 +38,7 @@ with st.container():
     if st.button("Salvar Registro", type="primary"):
         if aluno and descricao:
             try:
-                # Tenta ler a aba. ttl=0 é vital para não ler erro antigo do cache
+                # Tenta ler a aba 'Registros'
                 df_existente = conn.read(spreadsheet=URL_PLANILHA, worksheet="Registros", ttl=0)
                 
                 novo_registro = pd.DataFrame([{
@@ -51,11 +52,10 @@ with st.container():
                 df_final = pd.concat([df_existente, novo_registro], ignore_index=True)
                 conn.update(spreadsheet=URL_PLANILHA, worksheet="Registros", data=df_final)
                 
-                st.success("✅ Registro realizado!")
+                st.success("✅ Registro realizado com sucesso!")
                 st.balloons()
             except Exception as e:
-                st.error(f"Erro de conexão: Verifique se a aba se chama exatamente 'Registros' e se o link de compartilhamento está como EDITOR.")
-                st.info(f"Detalhe técnico: {e}")
+                st.error("Erro: Verifique se o nome da aba na sua planilha é 'Registros' e se o acesso está como EDITOR.")
         else:
-            st.warning("⚠️ Preencha nome e descrição.")
+            st.warning("⚠️ Preencha o nome do aluno e a descrição.")
     st.markdown('</div>', unsafe_allow_html=True)
