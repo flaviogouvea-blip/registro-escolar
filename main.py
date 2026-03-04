@@ -3,74 +3,63 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
+# Estilo visual idêntico à imagem
 st.set_page_config(page_title="Registro de Incidentes", layout="centered")
 
-# --- CSS PARA REPRODUZIR O LAYOUT DA IMAGEM ---
 st.markdown("""
     <style>
     .stApp { background-color: #f8f9fa; }
-    div[data-testid="stVerticalBlock"] > div:has(div.stMarkdown) {
-        background-color: white;
-        padding: 40px;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border: 1px solid #e0e0e0;
+    [data-testid="stVerticalBlock"] > div:has(div.stMarkdown) {
+        background-color: white; padding: 30px; border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
     }
-    label { font-weight: 500 !important; color: #444 !important; }
     .stTextInput input, .stSelectbox div[data-baseweb="select"], .stTextArea textarea {
-        background-color: #f1f3f5 !important;
-        border: none !important;
-        border-radius: 8px !important;
+        background-color: #f1f3f5 !important; border: none !important; border-radius: 8px !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONEXÃO COM GOOGLE SHEETS ---
+# --- COLOQUE O LINK DA SUA PLANILHA AQUI EMBAIXO ---
+URL_PLANILHA = "COLE_AQUI_O_LINK_DA_SUA_PLANILHA"
+
+# Conexão direta
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Carregar dados dos alunos (de uma aba chamada 'Alunos')
-try:
-    df_alunos = conn.read(worksheet="Alunos")
-except:
-    df_alunos = pd.DataFrame({'NOME': ['Exemplo'], 'SERIE': ['6º Ano A']})
-
-# --- INTERFACE ---
-st.markdown("Utilize o formulário abaixo para registrar incidentes ou observações.")
+st.write("Utilize o formulário abaixo para registrar incidentes ou observações.")
 
 with st.container():
     col1, col2 = st.columns(2)
     with col1:
-        aluno_sel = st.text_input("Nome do Aluno")
+        aluno = st.text_input("Nome do Aluno")
     with col2:
-        tipos = ["Indisciplina", "Falta de Material", "Atraso", "Elogio"]
-        tipo_sel = st.selectbox("Tipo de Ocorrência", tipos)
-
-    col3, _ = st.columns(2)
-    with col3:
-        series = sorted(df_alunos['SERIE'].unique())
-        serie_sel = st.selectbox("Turma", series)
+        tipo = st.selectbox("Tipo de Ocorrência", ["Indisciplina", "Atraso", "Falta de Material", "Elogio"])
     
-    relato = st.text_area("Descrição do ocorrido", height=150)
+    turma = st.selectbox("Turma", ["6º Ano A", "6º Ano B", "7º Ano A"])
+    descricao = st.text_area("Descrição do ocorrido", height=150)
 
     st.write("")
-    if st.button("Registrar Incidente", type="primary"):
-        if aluno_sel and relato:
-            # Criar nova linha de dados
-            nova_linha = pd.DataFrame([{
-                "Data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                "Aluno": aluno_sel,
-                "Tipo": tipo_sel,
-                "Turma": serie_sel,
-                "Descricao": relato
-            }])
-            
-            # Adicionar à planilha (aba chamada 'Registros')
-            dados_existentes = conn.read(worksheet="Registros")
-            dados_atualizados = pd.concat([dados_existentes, nova_linha], ignore_index=True)
-            conn.update(worksheet="Registros", data=dados_atualizados)
-            
-            st.success("✅ Incidente registrado com sucesso na planilha!")
-            st.balloons()
+    if st.button("Salvar Registro", type="primary"):
+        if aluno and descricao:
+            try:
+                # Lê os dados atuais
+                df_existente = conn.read(spreadsheet=URL_PLANILHA, worksheet="Registros")
+                
+                # Cria a nova linha
+                nova_linha = pd.DataFrame([{
+                    "Data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    "Aluno": aluno,
+                    "Tipo": tipo,
+                    "Turma": turma,
+                    "Descricao": descricao
+                }])
+                
+                # Junta e atualiza
+                df_atualizado = pd.concat([df_existente, nova_linha], ignore_index=True)
+                conn.update(spreadsheet=URL_PLANILHA, worksheet="Registros", data=df_atualizado)
+                
+                st.success("✅ Sucesso! Ocorrência registrada na planilha.")
+                st.balloons()
+            except Exception as e:
+                st.error(f"Erro ao salvar: Verifique se o link da planilha está correto e se a aba se chama 'Registros'.")
         else:
-            st.error("⚠️ Preencha o nome e a descrição.")
+            st.warning("⚠️ Preencha o nome do aluno e a descrição.")
